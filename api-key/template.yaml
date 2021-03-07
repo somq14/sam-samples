@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: v1
+      Auth:
+        # APIキーとその使用量プランを生成します
+        # APIキーの値はマネジメントコンソールで確認できます
+        # ここでクオータやスロットルを設定し、APIの利用に制限を加えることもできます
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          UsagePlanName: client-api-key
+
+  ApiKeyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.8
+      CodeUri: src/apis/api_key_function
+      Handler: lambda_handler.lambda_handler
+      Events:
+        ApiGatewayIntegration:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /
+            Method: get
+            # このAPIだけにAPIキー認証を設定する
+            # 全てのAPIにAPIキー認証を設定したい場合には、ApiGatewayのほうに設定すると便利
+            Auth:
+              ApiKeyRequired: true
