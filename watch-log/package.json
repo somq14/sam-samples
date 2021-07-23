@@ -1,0 +1,23 @@
+{
+  "name": "watch-log",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.80",
+    "@types/aws-sdk": "^2.7.0",
+    "@types/node": "^16.4.1",
+    "aws-sdk": "^2.952.0",
+    "copyfiles": "^2.4.1",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.3.5"
+  },
+  "scripts": {
+    "build": "run-s build:*",
+    "build:clean": "rimraf -rf dist",
+    "build:tsc": "tsc",
+    "build:copy": "copyfiles -u 1 src/**/package*.json dist",
+    "build:sam": "sam build -c"
+  }
+}

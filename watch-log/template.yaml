@@ -1,39 +1,57 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  watch-log
 
-  Sample SAM Template for watch-log
-  
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
-Globals:
-  Function:
-    Timeout: 3
+Parameters:
+  AlertMailAddress:
+    Type: String
 
 Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  ################################################################################
+  # アプリケーションのリソース
+  ################################################################################
+  AppFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      CodeUri: hello-world/
-      Handler: app.lambdaHandler
+      CodeUri: dist/AppFunction
+      Handler: app.handler
       Runtime: nodejs14.x
       Events:
         HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
-            Path: /hello
+            Path: /
             Method: get
 
-Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AppFunction}
+
+  ################################################################################
+  # ログ監視用リソース
+  ################################################################################
+  AlertSnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertMailAddress
+
+  AlertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/AlertFunction
+      Handler: alert.handler
+      Runtime: nodejs14.x
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !Sub ${AlertSnsTopic.TopicName}
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref AlertSnsTopic
+      Events:
+        AppLogSubscription:
+          Type: CloudWatchLogs
+          Properties:
+            LogGroupName: !Ref AppLogGroup
+            FilterPattern: '"[ALERT]"'
